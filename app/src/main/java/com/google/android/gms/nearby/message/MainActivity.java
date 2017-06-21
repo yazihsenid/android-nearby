@@ -1,13 +1,28 @@
-package nearby.com.shownearby;
+/**
+ * Copyright 2017. All Rights Reserved.
+ * <p/>
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * <p/>
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * <p/>
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package com.google.android.gms.nearby.message;
 
 import android.app.PendingIntent;
 import android.content.Intent;
-import android.net.Uri;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.design.widget.FloatingActionButton;
-import android.support.design.widget.Snackbar;
+import android.support.v7.widget.LinearLayoutManager;
+import android.support.v7.widget.RecyclerView;
 import android.util.Log;
 import android.view.View;
 import android.support.design.widget.NavigationView;
@@ -25,8 +40,8 @@ import com.google.android.gms.common.api.GoogleApiClient;
 import com.google.android.gms.common.api.ResultCallback;
 import com.google.android.gms.common.api.Status;
 import com.google.android.gms.nearby.Nearby;
-import com.google.android.gms.nearby.messages.Message;
 import com.google.android.gms.nearby.messages.MessageListener;
+import com.google.android.gms.nearby.messages.NearbyMessagesStatusCodes;
 import com.google.android.gms.nearby.messages.Strategy;
 import com.google.android.gms.nearby.messages.SubscribeOptions;
 
@@ -40,6 +55,12 @@ public class MainActivity extends AppCompatActivity
     private GoogleApiClient.ConnectionCallbacks mConnectionCallbacks;
 
     private GoogleApiClient.OnConnectionFailedListener mOnConnectionFailedListener;
+
+    private MessageDatAdaptor datAdaptor;
+
+    private RecyclerView messageRecyclerView;
+
+    private boolean mSubscribed = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -76,12 +97,21 @@ public class MainActivity extends AppCompatActivity
                 .setPackage("com.yourapp.ui");
         Log.i("TEST >>>>", "Use this intent url: " + intent.toUri(Intent.URI_INTENT_SCHEME));*/
 
-        initMessageListener();
+        //initMessageListener();
+        messageRecyclerView = (RecyclerView) findViewById(R.id.nearbyList);
+        datAdaptor = new MessageDatAdaptor();
+        messageRecyclerView.setAdapter(datAdaptor);
+        messageRecyclerView.setLayoutManager(new LinearLayoutManager(this));
+        BackgroundSubscribeIntentService.setMessageDatAdaptor(datAdaptor);
         initGoogleApiClient();
-
     }
 
     private void subscribe() {
+        if (mSubscribed)
+            return;
+        else
+            mSubscribed = true;
+
         Log.i("NEARBY BLE", "Clicked on subscribe...");
         Toast.makeText(MainActivity.this, "Subscribing.", Toast.LENGTH_SHORT).show();
         SubscribeOptions options = new SubscribeOptions.Builder()
@@ -92,8 +122,10 @@ public class MainActivity extends AppCompatActivity
             public void onResult(@NonNull Status status) {
                 if (status.isSuccess()) {
                     Toast.makeText(MainActivity.this, "Subscribed successfully.", Toast.LENGTH_SHORT).show();
+                    startService(getBackgroundSubscribeServiceIntent());
                 } else {
-                    Toast.makeText(MainActivity.this, "Could not subscribe, status = " + status, Toast.LENGTH_SHORT).show();
+                    Toast.makeText(MainActivity.this, "Could not subscribe, status = " + status + " decoded value = "
+                            + NearbyMessagesStatusCodes.getStatusCodeString(status.getStatusCode()), Toast.LENGTH_SHORT).show();
                 }
             }
         });
@@ -108,7 +140,7 @@ public class MainActivity extends AppCompatActivity
         return new Intent(this, BackgroundSubscribeIntentService.class);
     }
 
-    private void initMessageListener() {
+    /*private void initMessageListener() {
         if (mMessageListener == null) {
             mMessageListener = new MessageListener() {
                 @Override
@@ -128,7 +160,7 @@ public class MainActivity extends AppCompatActivity
                 }
             };
         }
-    }
+    }*/
 
     private void initGoogleApiClient() {
         if (mGoogleApiClient == null) {
@@ -137,6 +169,7 @@ public class MainActivity extends AppCompatActivity
                 public void onConnected(@Nullable Bundle bundle) {
                     Log.d("NEARBY BLE", "Connected");
                     Toast.makeText(MainActivity.this, "Connected", Toast.LENGTH_SHORT).show();
+                    subscribe();
                 }
 
                 @Override

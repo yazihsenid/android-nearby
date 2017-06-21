@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package nearby.com.shownearby;
+package com.google.android.gms.nearby.message;
 
 import android.content.Context;
 import android.content.SharedPreferences;

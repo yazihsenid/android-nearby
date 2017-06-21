@@ -14,13 +14,14 @@
  * limitations under the License.
  */
 
-package nearby.com.shownearby;
+package com.google.android.gms.nearby.message;
 
 import android.app.IntentService;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
+import android.os.Handler;
 import android.support.v4.app.NotificationCompat;
 import android.text.TextUtils;
 
@@ -40,8 +41,17 @@ public class BackgroundSubscribeIntentService extends IntentService {
     private static final int MESSAGES_NOTIFICATION_ID = 1;
     private static final int NUM_MESSAGES_IN_NOTIFICATION = 5;
 
+    private static MessageDatAdaptor messageDatAdaptor;
+
+    private Handler mHandler;
+
     public BackgroundSubscribeIntentService() {
         super("BackgroundSubscribeIntentService");
+        mHandler = new Handler();
+    }
+
+    public static void setMessageDatAdaptor(MessageDatAdaptor messageDatAdaptor) {
+        BackgroundSubscribeIntentService.messageDatAdaptor = messageDatAdaptor;
     }
 
     @Override
@@ -55,14 +65,26 @@ public class BackgroundSubscribeIntentService extends IntentService {
         if (intent != null) {
             Nearby.Messages.handleIntent(intent, new MessageListener() {
                 @Override
-                public void onFound(Message message) {
-                    Utils.saveFoundMessage(getApplicationContext(), message);
+                public void onFound(final Message message) {
+                    mHandler.post(new Runnable() {
+                        @Override
+                        public void run() {
+                            messageDatAdaptor.add(message);
+                        }
+                    });
+                    //Utils.saveFoundMessage(getApplicationContext(), message);
                     updateNotification();
                 }
 
                 @Override
-                public void onLost(Message message) {
-                    Utils.removeLostMessage(getApplicationContext(), message);
+                public void onLost(final Message message) {
+                    mHandler.post(new Runnable() {
+                        @Override
+                        public void run() {
+                            messageDatAdaptor.remove(message);
+                        }
+                    });
+                    //Utils.removeLostMessage(getApplicationContext(), message);
                     updateNotification();
                 }
             });
